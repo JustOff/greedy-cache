@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<setting type="bool" pref="extensions.greedy-cache.enabled" title="Load resources from cache">
+	</setting>
+	<setting type="bool" pref="extensions.greedy-cache.enforceic" title="Enforce caching of images">
+	</setting>
+</vbox>
