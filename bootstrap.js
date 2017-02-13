@@ -87,7 +87,9 @@ var button = {
 				}
 				toolbar.insertItem(this.meta.id, nextItem);
 			}
-			w.setToolbarVisibility(toolbar, true);
+			if (toolbar.getAttribute("collapsed") == "true") {
+				w.setToolbarVisibility(toolbar, true);
+			}
 		}
 		return b;
 	},
