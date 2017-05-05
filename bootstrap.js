@@ -2,7 +2,7 @@ var Cc = Components.classes, Ci = Components.interfaces, Cu = Components.utils;
 Cu.import("resource://gre/modules/Services.jsm");
 
 var branch = "extensions.greedy-cache.";
-var enabled, enforce, gWindowListener = null;
+var enabled, enforce, unhideToolbar, gWindowListener = null;
 
 var httpRequestObserver = {
 	observe: function (subject, topic, data) {
@@ -87,7 +87,7 @@ var button = {
 				}
 				toolbar.insertItem(this.meta.id, nextItem);
 			}
-			if (toolbar.getAttribute("collapsed") == "true") {
+			if (unhideToolbar && toolbar.getAttribute("collapsed") == "true") {
 				w.setToolbarVisibility(toolbar, true);
 			}
 		}
@@ -186,6 +186,9 @@ var globalPrefsWatcher = {
 				enforce = false;
 			}
 			break;
+			case "unhideToolbar":
+				unhideToolbar = Services.prefs.getBranch(branch).getBoolPref("unhideToolbar");
+			break;
 		}
 	},
 	register: function () {
@@ -246,6 +249,7 @@ function startup(data, reason) {
 		httpResponseObserver.register();
 	}
 	globalPrefsWatcher.register();
+	unhideToolbar = p.getBoolPref("unhideToolbar");
 
 	var ww = Cc["@mozilla.org/embedcomp/window-watcher;1"].getService(Ci.nsIWindowWatcher);
 	gWindowListener = new BrowserWindowObserver({
