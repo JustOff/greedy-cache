@@ -4,4 +4,9 @@
 	</setting>
 	<setting type="bool" pref="extensions.greedy-cache.enforceic" title="Enforce caching of images">
 	</setting>
+	<setting type="bool" pref="extensions.greedy-cache.useExceptions" title="Use exception list">
+	</setting>
+	<setting type="string" pref="extensions.greedy-cache.exceptionList" title="Domain exception list">
+	Use ; as a delimiter for multiple domains
+	</setting>
 </vbox>

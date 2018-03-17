@@ -2,17 +2,32 @@ var Cc = Components.classes, Ci = Components.interfaces, Cu = Components.utils;
 Cu.import("resource://gre/modules/Services.jsm");
 
 var branch = "extensions.greedy-cache.";
-var enabled, enforce, unhideToolbar, gWindowListener = null;
+var enabled, enforce, unhideToolbar, useExceptions, domRegex = null, gWindowListener = null;
+
+function listTest(host) {
+	if (domRegex === null) {
+		try {
+			var exceptionList = Services.prefs.getBranch(branch).getComplexValue("exceptionList", Ci.nsISupportsString).data;
+			domRegex = new RegExp("^([^.]+\\.)*(" + exceptionList.replace(/(\*\.?|\s+\.?|^\.)/g,"").replace(/;\.?/g,"|").replace(/\./g,"\\.") + ")\\.?$");
+		} catch (e) {
+			return false;
+		}
+	}
+	return domRegex.test(host);
+}
 
 var httpRequestObserver = {
 	observe: function (subject, topic, data) {
 		if (topic == "http-on-modify-request" && subject instanceof Ci.nsIHttpChannel
 				&& subject.loadInfo && subject.loadInfo.contentPolicyType < 5) {
+			if (useExceptions && listTest(subject.URI.host)) {
+				return;
+			}
 			subject.loadFlags |= 1024;
 		}
 	},
 	register: function ()
-	{  
+	{
 		Services.obs.addObserver(this, "http-on-modify-request", false);
 	},
 	unregister: function ()  
@@ -22,10 +37,13 @@ var httpRequestObserver = {
 };
 
 var httpResponseObserver = {
-    observe: function (subject, topic, data) {
+	observe: function (subject, topic, data) {
 		if (topic == "http-on-examine-response" && subject instanceof Ci.nsIHttpChannel
 				&& subject.loadInfo && subject.loadInfo.contentPolicyType == 3
 				&& (subject.isNoCacheResponse() || subject.isNoStoreResponse())) {
+			if (useExceptions && listTest(subject.URI.host)) {
+				return;
+			}
 			subject.setResponseHeader("Cache-Control", "max-age=3600", false);
 			subject.setResponseHeader("Pragma", "", false);
 			subject.setResponseHeader("Expires", "", false);
@@ -158,8 +176,13 @@ var gcacheIn = function (w) {
 			b.parentNode.removeChild(b);
 			b = null;
 		},
-		run : function () {
-			Services.prefs.getBranch(branch).setBoolPref("enabled", !enabled);
+		run : function (e) {
+			if (e.ctrlKey || e.metaKey) {
+				var mrw = Services.wm.getMostRecentWindow("navigator:browser");
+				mrw.BrowserOpenAddonsMgr("addons://detail/greedycache@Off.JustOff/preferences");
+			} else {
+				Services.prefs.getBranch(branch).setBoolPref("enabled", !enabled);
+			}
 		}
 	};
 };
@@ -185,6 +208,16 @@ var globalPrefsWatcher = {
 				httpResponseObserver.unregister();
 				enforce = false;
 			}
+			break;
+			case "useExceptions":
+				useExceptions = Services.prefs.getBranch(branch).getBoolPref("useExceptions");
+			break;
+			case "exceptionList":
+				var exceptionList = Services.prefs.getBranch(branch).getComplexValue("exceptionList", Ci.nsISupportsString).data;
+				if (exceptionList == "") {
+					Services.prefs.getBranch(branch).clearUserPref("exceptionList");
+				}
+				domRegex = null;
 			break;
 			case "unhideToolbar":
 				unhideToolbar = Services.prefs.getBranch(branch).getBoolPref("unhideToolbar");
@@ -240,6 +273,8 @@ function startup(data, reason) {
 	PrefLoader.loadDefaultPrefs(data.installPath, "greedy-cache.js");
 
 	var p = Services.prefs.getBranch(branch);
+	useExceptions = p.getBoolPref("useExceptions");
+	listTest();
 	enabled = p.getBoolPref("enabled");
 	if (enabled) {
 		httpRequestObserver.register();
